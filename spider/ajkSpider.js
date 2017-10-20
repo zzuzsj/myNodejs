@@ -6,7 +6,6 @@ const async = require('async');
 let topicArray = [];
 let houseImgUrlArray = [];
 
-DeleteFolder('./rent_image')
 startDownload();
 
 function startDownload() {
@@ -60,7 +59,7 @@ function saveAllPage(startIndex, endIndex, callback) {
             let $ = cheerio.load(res.body.toString());
             $('.zu-itemmod').each((i, e) => {
                 let topicObj = {};
-                let title = $(e).find('h3').find('a').attr('title').replace(/\s+/g, '').replace(/\:/g,'').replace(/\*/g,'').replace(/\、/g,'').replace(/\\/g,'');
+            let title = $(e).find('h3').find('a').attr('title').replace(/[(\s+)\：\、\，\*\\\:]/g, '');
                 let topicUrl = $(e).find('h3').find('a').attr('href');
                 let address = $(e).find('address').text().replace(/\<a(.+)a\>/g, '').replace(/\s+/g, '');
                 let price = $(e).find('.zu-side').find('strong').text();
@@ -90,7 +89,7 @@ function saveAllPage(startIndex, endIndex, callback) {
 }
 
 function saveAllImagePage(topicArray, callback) {
-    async.mapLimit(topicArray, 50, function (obj, cb) {
+    async.mapLimit(topicArray, 10, function (obj, cb) {
         request({
             'url': obj.topicUrl,
             'method': 'GET',
@@ -107,8 +106,9 @@ function saveAllImagePage(topicArray, callback) {
                 index++;
                 let imgUrlArray = {};
                 imgUrlArray.fileName = obj.fileName;
-                imgUrlArray.imgsrc = $(e).attr('src');
-                console.log(imgUrlArray.imgsrc+'\n');
+                var imgsrc = ($(e).attr('src').indexOf('default') != -1 || $(e).attr('src').length <= 0) ? $(e).attr('data-src') : $(e).attr('src');
+                imgUrlArray.imgsrc = imgsrc;
+                console.log(imgUrlArray.imgsrc + '\n');
                 imgUrlArray.index = index;
                 houseImgUrlArray.push(imgUrlArray);
             });
@@ -137,7 +137,7 @@ function saveAllImage(houseImgUrlArray, callback) {
             'headers': {
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                 'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36",
-                'Referer':'https://anjuke.com/'
+                'Referer': 'https://anjuke.com/'
             }
         }).pipe(fs.createWriteStream('./rent_image/' + obj.fileName + '/' + obj.index + '.jpg').on('close', function () {
             cb(null, obj.title + ' img respose');
@@ -153,11 +153,11 @@ function saveAllImage(houseImgUrlArray, callback) {
 
 function DeleteFolder(path) {
     var files = [];
-    if( fs.existsSync(path) ) {
+    if (fs.existsSync(path)) {
         files = fs.readdirSync(path);
-        files.forEach(function(file,index){
+        files.forEach(function (file, index) {
             var curPath = path + "/" + file;
-            if(fs.statSync(curPath).isDirectory()) { // recurse
+            if (fs.statSync(curPath).isDirectory()) { // recurse
                 DeleteFolder(curPath);
             } else { // delete file
                 fs.unlinkSync(curPath);
